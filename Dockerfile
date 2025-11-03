@@ -1,6 +1,6 @@
 # This is a dockerfile for building goproxy
 # Build and run with:
-#   docker build -t goproxy:0.23.0 -f v0.23.0/Dockerfile .
+#   docker build -t goproxy:0.23.0 -f Dockerfile .
 #   docker run -it goproxy:0.23.0
 
 FROM golang:1.25 AS builder
@@ -16,10 +16,13 @@ RUN apt-get update && \
     apt-get install -y upx-ucl && \
     rm -rf /var/lib/apt/lists/*
 
-RUN CGOENABLED=0 \
+# Build statically linked binary with CGO disabled
+RUN CGO_ENABLED=0 \
+    GOOS=linux \
     GOTOOLCHAIN=local \
     go build \
-        -ldflags '-s -w -linkmode external -extldflags "-static"' \
+        -a \
+        -ldflags '-s -w -extldflags "-static"' \
         -o goproxy cmd/goproxy/main.go
 
 RUN upx --best --verbose goproxy
