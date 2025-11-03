@@ -16,41 +16,13 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  detect-changes:
+  build-and-publish:
     runs-on: ubuntu-latest
-    outputs:
-      versions: ${{ steps.changes.outputs.versions }}
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v3
 
-      - name: Detect changed versions
-        id: changes
-        run: |
-          git fetch --prune --unshallow
-          CHANGED_VERSIONS=$(git diff --name-only HEAD~1 HEAD | grep -oE '^v[0-9]+\.[0-9]+' | sort -u)
-          echo "Detected changed versions: $CHANGED_VERSIONS"
-          if [ -z "$CHANGED_VERSIONS" ]; then
-            # If no changes detected, build all versions
-            CHANGED_VERSIONS=$(ls -d v*/ | sed 's:/$::')
-          fi
-          echo "::set-output name=versions::$(printf '%s' "$CHANGED_VERSIONS" | jq -R -s -c 'split("\n")[:-1]')"
-        
-  build-and-publish:
-      needs: detect-changes
-      runs-on: ubuntu-latest
-      strategy:
-        matrix:
-            version: ${{ fromJson(needs.detect-changes.outputs.versions) }}
-      steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-    
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-    
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -60,10 +32,11 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-    
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
-          context: ./${{ matrix.version }}
+          context: .
+          file: Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.version }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v0.23.0
