@@ -1,14 +1,6 @@
 name: Build and Publish Docker Images
 
 on:
-  push:
-    branches:
-      - release
-    paths:
-      - 'v*/Dockerfile'
-      - '.github/workflows/build-and-publish.yaml'
-  release:
-    types: [published]
   workflow_dispatch:
 
 env:
